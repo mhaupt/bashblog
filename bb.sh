@@ -1202,6 +1202,11 @@ do_main() {
     create_includes
     [[ $1 == post ]] && write_entry "$@"
     [[ $1 == publish ]] && publish_entry "$@"
+
+    # make sure postings don't get out of the right temporal order
+    # (this assumes Markdown is used)
+    for f in *.md; do touch -r $f ${f%.md}.html; done
+
     [[ $1 == rebuild ]] && rebuild_all_entries && rebuild_tags
     [[ $1 == delete ]] && rm "$2" &> /dev/null && rebuild_tags
     if [[ $1 == edit ]]; then
