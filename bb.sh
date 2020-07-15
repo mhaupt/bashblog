@@ -642,6 +642,40 @@ EOF
     fi
 }
 
+# Processes a Markdown file into a new post without editing.
+publish_entry() {
+    f=$2
+    if [[ ! -f $f ]]; then
+        echo "File does not exist: $f"
+        exit
+    fi
+
+    test_markdown
+    if (($? != 0)); then
+        echo "Markdown is not working."
+        exit
+    fi
+
+    TMPFILE=${f%.md}.tmp.md
+    cp $f $TMPFILE
+    chmod 600 "$TMPFILE"
+
+    filename=""
+
+    html_from_md=$(markdown "$TMPFILE")
+    parse_file "$html_from_md"
+    rm "$html_from_md"
+    
+    rm $TMPFILE
+    chmod 644 "$filename"
+    echo "Posted $filename"
+    relevant_tags=$(tags_in_post $filename)
+    if [[ -n $relevant_tags ]]; then
+        relevant_posts="$(posts_with_tags $relevant_tags) $filename"
+        rebuild_tags "$relevant_posts" "$relevant_tags"
+    fi
+}
+
 # Create an index page with all the posts
 all_posts() {
     echo -n "Creating an index page with all the posts "
@@ -1056,6 +1090,7 @@ usage() {
     echo "    post [-html] [filename] insert a new blog post, or the filename of a draft to continue editing it"
     echo "                            it tries to use markdown by default, and falls back to HTML if it's not available."
     echo "                            use '-html' to override it and edit the post as HTML even when markdown is available"
+    echo "    publish [filename]      processes the file directly into a new post without editing (Markdown only)"
     echo "    edit [-n|-f] [filename] edit an already published .html or .md file. **NEVER** edit manually a published .html file,"
     echo "                            always use this function as it keeps internal data and rebuilds the blog"
     echo "                            use '-n' to give the file a new name, if title was changed"
@@ -1130,7 +1165,7 @@ do_main() {
         echo "Please set your \$EDITOR environment variable. For example, to use nano, add the line 'export EDITOR=nano' to your \$HOME/.bashrc file" && exit
 
     # Check for validity of argument
-    [[ $1 != "reset" && $1 != "post" && $1 != "rebuild" && $1 != "list" && $1 != "edit" && $1 != "delete" && $1 != "tags" ]] && 
+    [[ $1 != "reset" && $1 != "post" && $1 != "publish" && $1 != "rebuild" && $1 != "list" && $1 != "edit" && $1 != "delete" && $1 != "tags" ]] && 
         usage && exit
 
     [[ $1 == list ]] &&
@@ -1166,6 +1201,7 @@ do_main() {
     create_css
     create_includes
     [[ $1 == post ]] && write_entry "$@"
+    [[ $1 == publish ]] && publish_entry "$@"
     [[ $1 == rebuild ]] && rebuild_all_entries && rebuild_tags
     [[ $1 == delete ]] && rm "$2" &> /dev/null && rebuild_tags
     if [[ $1 == edit ]]; then
