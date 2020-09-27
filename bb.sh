@@ -1205,7 +1205,13 @@ do_main() {
 
     # make sure postings don't get out of the right temporal order
     # (this assumes Markdown is used)
-    for f in *.md; do touch -r $f ${f%.md}.html; done
+    for f in *.md; do
+        html_name=${f%.md}.html
+        # avoid creating empty HTML files for unpublished MD files
+        if [[ -f $html_name ]]; then
+            touch -r $f $html_name
+        fi
+    done
 
     [[ $1 == rebuild ]] && rebuild_all_entries && rebuild_tags
     [[ $1 == delete ]] && rm "$2" &> /dev/null && rebuild_tags
